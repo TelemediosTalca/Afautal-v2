@@ -68,6 +68,10 @@
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user",
       "inversedBy": "solicitud"
+    },
+    "es_nuevo_externo": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

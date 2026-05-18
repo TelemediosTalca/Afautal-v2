@@ -506,7 +506,7 @@ export interface ApiCargaFamiliarCargaFamiliar
 export interface ApiCategoriaCategoria extends Struct.CollectionTypeSchema {
   collectionName: 'categorias';
   info: {
-    displayName: 'Categoría';
+    displayName: 'Categoria';
     pluralName: 'categorias';
     singularName: 'categoria';
   };
@@ -543,6 +543,7 @@ export interface ApiCiudadCiudad extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    codigo: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -605,6 +606,7 @@ export interface ApiComunaComuna extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    codigo: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1213,6 +1215,8 @@ export interface ApiSolicitudSolicitud extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     direccion_particular: Schema.Attribute.String & Schema.Attribute.Required;
+    es_nuevo_externo: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     estado: Schema.Attribute.Enumeration<
       ['pendiente', 'aprobado', 'rechazado']
     > &

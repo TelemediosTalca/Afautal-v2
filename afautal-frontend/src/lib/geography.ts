@@ -1,5 +1,5 @@
 
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://localhost:1337";
+const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://127.0.0.1:1337";
 
 export interface Region {
   id: number;
@@ -47,19 +47,37 @@ export async function fetchComunasByRegion(regionDocumentId: string): Promise<Co
 }
 
 export async function fetchCiudadById(id: number): Promise<(Ciudad & { region: Region }) | null> {
-  const response = await fetch(`${STRAPI_URL}/api/ciudades/${id}?populate=region`, {
+  const response = await fetch(`${STRAPI_URL}/api/ciudades?filters[id][$eq]=${id}&populate=region`, {
     cache: "no-store",
   });
   if (!response.ok) return null;
   const data = await response.json();
-  return data.data || null;
+  return data.data?.[0] || null;
 }
 
 export async function fetchComunaById(id: number): Promise<(Comuna & { region: Region }) | null> {
-  const response = await fetch(`${STRAPI_URL}/api/comunas/${id}?populate=region`, {
+  const response = await fetch(`${STRAPI_URL}/api/comunas?filters[id][$eq]=${id}&populate=region`, {
     cache: "no-store",
   });
   if (!response.ok) return null;
   const data = await response.json();
-  return data.data || null;
+  return data.data?.[0] || null;
+}
+
+export async function fetchCiudadByNombre(nombre: string): Promise<(Ciudad & { region: Region }) | null> {
+  const response = await fetch(`${STRAPI_URL}/api/ciudades?filters[nombre][$containsi]=${encodeURIComponent(nombre)}&populate=region`, {
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.data?.[0] || null;
+}
+
+export async function fetchComunaByNombre(nombre: string): Promise<(Comuna & { region: Region }) | null> {
+  const response = await fetch(`${STRAPI_URL}/api/comunas?filters[nombre][$containsi]=${encodeURIComponent(nombre)}&populate=region`, {
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.data?.[0] || null;
 }

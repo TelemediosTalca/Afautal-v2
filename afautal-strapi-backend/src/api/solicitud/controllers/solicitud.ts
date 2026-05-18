@@ -20,6 +20,7 @@ interface SolicitudRegistroPayload {
 	telefono?: string;
 	banco?: string;
 	tipo_cuenta?: string;
+	es_nuevo_externo?: boolean;
 }
 
 interface SolicitudWriteData {
@@ -39,6 +40,7 @@ interface SolicitudWriteData {
 	banco: { set: string[] } | null;
 	tipo_cuenta: { set: string[] } | null;
 	estado: 'pendiente';
+	es_nuevo_externo: boolean;
 }
 
 export default factories.createCoreController('api::solicitud.solicitud', ({ strapi }) => ({
@@ -96,6 +98,7 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
 			banco: payload.banco ? { set: [payload.banco] } : null,
 			tipo_cuenta: payload.tipo_cuenta ? { set: [payload.tipo_cuenta] } : null,
 			estado: 'pendiente',
+			es_nuevo_externo: payload.es_nuevo_externo ?? false,
 		};
 
 		const solicitud = await solicitudDocuments.create({

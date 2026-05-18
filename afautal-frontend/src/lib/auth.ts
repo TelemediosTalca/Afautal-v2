@@ -50,6 +50,7 @@ export interface RegistroSolicitudPayload {
   direccion_particular?: string;
   banco?: string;
   tipo_cuenta?: string;
+  es_nuevo_externo?: boolean;
 }
 
 export interface RegistroOptions {

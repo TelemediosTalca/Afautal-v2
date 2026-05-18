@@ -9,7 +9,7 @@ export default factories.createCoreService('api::solicitud.solicitud', ({ strapi
   async approveSolicitud(solicitudId: number) {
     const solicitud = await strapi.db.query('api::solicitud.solicitud').findOne({
       where: { id: solicitudId },
-      populate: { usuario: true },
+      populate: { usuario: true, ciudad: true, comuna: true, jerarquia: true },
     });
 
     if (!solicitud) {
@@ -87,6 +87,48 @@ export default factories.createCoreService('api::solicitud.solicitud', ({ strapi
       data: { usuario: userId },
     });
 
+    if (solicitud.es_nuevo_externo) {
+      try {
+        console.log('Solicitud is marked as new for external DB, registering in telegestor...');
+        const { rutSinDv, dv } = this.splitRut(solicitud.rut);
+        
+        let jerarquiaNombre = solicitud.jerarquia ? solicitud.jerarquia.nombre : "";
+        let ciudadCodigo = solicitud.ciudad ? solicitud.ciudad.codigo : "";
+        let comunaCodigo = solicitud.comuna ? solicitud.comuna.codigo : "";
+
+        const externalPayload = new URLSearchParams({
+          tipo: "registrar_funcionario",
+          rut: rutSinDv,
+          dv: dv,
+          nombre: solicitud.nombre_completo,
+          correo: solicitud.correo_electronico,
+          telefono: (solicitud.telefono ?? "").replace(/\D/g, "").slice(-8),
+          unidad_academica: solicitud.unidad_academica || "",
+          fecha_nacimiento: solicitud.fecha_nacimiento || "",
+          jerarquia: jerarquiaNombre,
+          ciudad_id: ciudadCodigo,
+          comuna_id: comunaCodigo,
+          direccion: solicitud.direccion_particular || "",
+        });
+        
+        console.log("PAYLOAD ENVIADO A TELEGESTOR: ", Object.fromEntries(externalPayload.entries()));
+
+        const externalResponse = await fetch("https://telegestor.cl/afautal-data/index.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: externalPayload,
+        });
+
+        if (!externalResponse.ok) {
+          console.error(`Failed to register in external API: ${externalResponse.status}`);
+        } else {
+          console.log('Successfully registered in external API.');
+        }
+      } catch (error) {
+        console.error('Error while trying to register in external API:', error);
+      }
+    }
+
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     try {
@@ -139,5 +181,13 @@ export default factories.createCoreService('api::solicitud.solicitud', ({ strapi
   buildUsernameFromEmail(email: string): string {
     const prefix = email.split('@')[0]?.replace(/[^a-zA-Z0-9._-]/g, '') || 'usuario';
     return `${prefix}-${Date.now()}`;
+  },
+
+  splitRut(rut: string): { rutSinDv: string; dv: string } {
+    const normalized = rut.replace(/[^0-9kK]/g, "");
+    return {
+      rutSinDv: normalized.slice(0, -1),
+      dv: normalized.slice(-1).toLowerCase(),
+    };
   },
 }));

@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { fetchRegistroOptions, submitSolicitudRegistro, fetchExternalClientData, registerExternalFuncionario } from "@/lib/auth";
-import { fetchRegiones, fetchCiudadesByRegion, fetchComunasByRegion, fetchCiudadById, fetchComunaById, type Region, type Ciudad, type Comuna } from "@/lib/geography";
+import { fetchRegiones, fetchCiudadesByRegion, fetchComunasByRegion, fetchCiudadById, fetchComunaById, fetchCiudadByNombre, type Region, type Ciudad, type Comuna } from "@/lib/geography";
 
 export default function RegisterPage() {
 	const [step, setStep] = useState(1);
@@ -108,43 +108,38 @@ export default function RegisterPage() {
 						isAutoPopulating.current = true;
 						const newLocked = [];
 
-						if (data.cli_nombre) {
-							setNombreCompleto(data.cli_nombre);
+						if (data.cli_nombre && data.cli_nombre.trim() !== "") {
+							setNombreCompleto(data.cli_nombre.trim());
 							newLocked.push("nombreCompleto");
 						}
-						if (data.cli_emp_mail) {
-							setCorreo(data.cli_emp_mail);
+						if (data.cli_emp_mail && data.cli_emp_mail.trim() !== "") {
+							setCorreo(data.cli_emp_mail.trim());
 							newLocked.push("correo");
 						}
-						if (data.cli_emp_direccion) {
-							setDireccionParticular(data.cli_emp_direccion);
+						if (data.cli_emp_direccion && data.cli_emp_direccion.trim() !== "") {
+							setDireccionParticular(data.cli_emp_direccion.trim());
 							newLocked.push("direccionParticular");
 						}
-						if (data.cli_emp_descrip_giro) {
-							setUnidadAcademica(data.cli_emp_descrip_giro);
+						if (data.cli_emp_descrip_giro && data.cli_emp_descrip_giro.trim() !== "") {
+							setUnidadAcademica(data.cli_emp_descrip_giro.trim());
 							newLocked.push("unidadAcademica");
 						}
 						
 						const phone = data.cli_emp_fono_contacto || data.cli_emp_fono;
-						if (phone) {
+						if (phone && phone.trim() !== "") {
 							const cleanPhone = phone.replace(/\D/g, "");
-							setTelefono(cleanPhone.slice(-8));
-							newLocked.push("telefono");
+							if (cleanPhone.length > 0) {
+								setTelefono(cleanPhone.slice(-8));
+								newLocked.push("telefono");
+							}
 						}
 
-						if (data.ciud_idn) {
-							const ciudadData = await fetchCiudadById(Number(data.ciud_idn));
+						if (data.ciud_nombre && data.ciud_nombre.trim() !== "") {
+							const ciudadData = await fetchCiudadByNombre(data.ciud_nombre.trim());
 							if (ciudadData) {
 								setRegion(ciudadData.region.documentId);
 								setCiudad(ciudadData.documentId);
 								newLocked.push("region", "ciudad");
-							}
-						}
-						if (data.com_idn) {
-							const comunaData = await fetchComunaById(Number(data.com_idn));
-							if (comunaData) {
-								setComuna(comunaData.documentId);
-								newLocked.push("comuna");
 							}
 						}
 						setLockedFields(newLocked);
@@ -211,9 +206,6 @@ export default function RegisterPage() {
 		setError(null);
 		setSubmitting(true);
 		try {
-			const selectedCiudad = ciudades.find((item) => item.documentId === ciudad);
-			const selectedComuna = comunas.find((item) => item.documentId === comuna);
-
 			await submitSolicitudRegistro({
 				rut, nombre_completo: nombreCompleto, correo_electronico: correo, 
 				telefono: `+569${telefono}`,
@@ -221,22 +213,8 @@ export default function RegisterPage() {
 				tipo_contrato: tipoContrato, categoria, jerarquia, region, comuna, ciudad,
 				direccion_particular: direccionParticular || "No especificada",
 				banco: banco, tipo_cuenta: tipoCuenta,
+				es_nuevo_externo: !externalClientFound,
 			});
-
-			if (!externalClientFound) {
-				await registerExternalFuncionario({
-					rut,
-					nombreCompleto,
-					correo,
-					telefono,
-					unidadAcademica,
-					fechaNacimiento,
-					jerarquia,
-					ciudadId: selectedCiudad?.id,
-					comunaId: selectedComuna?.id,
-					direccionParticular,
-				});
-			}
 
 			setStep(4);
 		} catch (e) {

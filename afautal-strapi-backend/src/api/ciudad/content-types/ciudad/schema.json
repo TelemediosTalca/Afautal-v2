@@ -15,6 +15,9 @@
       "type": "string",
       "required": true
     },
+    "codigo": {
+      "type": "string"
+    },
     "region": {
       "type": "relation",
       "relation": "manyToOne",
