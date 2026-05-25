@@ -43,6 +43,42 @@ interface SolicitudWriteData {
 	es_nuevo_externo: boolean;
 }
 
+const getBearerToken = (authorizationHeader?: string): string | null => {
+	if (!authorizationHeader) {
+		return null;
+	}
+
+	const [scheme, token] = authorizationHeader.split(' ');
+
+	if (scheme?.toLowerCase() !== 'bearer' || !token) {
+		return null;
+	}
+
+	return token;
+};
+
+const resolveAuthUserId = async (ctx: any, strapi: any): Promise<number | null> => {
+	if (ctx.state?.user?.id) {
+		return ctx.state.user.id as number;
+	}
+
+	const token = getBearerToken(ctx.request?.header?.authorization);
+
+	if (!token) {
+		return null;
+	}
+
+	try {
+		const jwtService = strapi.plugin('users-permissions').service('jwt');
+		const payload = await jwtService.verify(token);
+		const userId = Number(payload?.id);
+
+		return Number.isFinite(userId) ? userId : null;
+	} catch {
+		return null;
+	}
+};
+
 export default factories.createCoreController('api::solicitud.solicitud', ({ strapi }) => ({
 	async registerFromSolicitud(ctx) {
 		const payload = (ctx.request.body ?? {}) as SolicitudRegistroPayload;
@@ -113,5 +149,108 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
 				solicitudId: solicitud.documentId || solicitud.id,
 			},
 		});
+	},
+
+	async update(ctx) {
+		const authUserId = await resolveAuthUserId(ctx, strapi);
+		const payload = ((ctx.request.body ?? {}).data ?? {}) as SolicitudRegistroPayload;
+
+		if (!authUserId) {
+			return ctx.unauthorized('No autenticado.');
+		}
+
+		const user = await strapi.db.query('plugin::users-permissions.user').findOne({
+			where: { id: authUserId },
+			populate: { solicitud: true },
+		});
+
+		let solicitud = user?.solicitud as any;
+
+		if (!solicitud && ctx.params?.id) {
+			const routeId = String(ctx.params.id).trim();
+			const numericRouteId = Number(routeId);
+
+			solicitud = await strapi.db.query('api::solicitud.solicitud').findOne({
+				where: {
+					usuario: authUserId,
+					...(Number.isFinite(numericRouteId)
+						? { $or: [{ id: numericRouteId }, { documentId: routeId }] }
+						: { documentId: routeId }),
+				},
+			});
+		}
+
+		if (!solicitud) {
+			return ctx.notFound('No se encontró la solicitud asociada al usuario.');
+		}
+
+		const solicitudDocumentId = solicitud.documentId || String(solicitud.id);
+
+		if (!solicitudDocumentId) {
+			return ctx.badRequest('No se pudo resolver la solicitud a actualizar.');
+		}
+
+		const resolveRelationDocumentId = async (uid: string, value?: string): Promise<string | null> => {
+			const normalizedValue = value?.trim();
+
+			if (!normalizedValue) {
+				return null;
+			}
+
+			const byDocumentId = await strapi.db.query(uid).findOne({
+				where: { documentId: normalizedValue },
+			});
+
+			if (byDocumentId?.documentId) {
+				return byDocumentId.documentId as string;
+			}
+
+			const byNombre = await strapi.db.query(uid).findOne({
+				where: { nombre: normalizedValue },
+			});
+
+			if (byNombre?.documentId) {
+				return byNombre.documentId as string;
+			}
+
+			if (byNombre?.id) {
+				return String(byNombre.id);
+			}
+
+			return null;
+		};
+
+		const updateData: Record<string, unknown> = {};
+
+		if (Object.prototype.hasOwnProperty.call(payload, 'banco')) {
+			const bancoDocumentId = await resolveRelationDocumentId('api::banco.banco', payload.banco);
+
+			if (payload.banco && !bancoDocumentId) {
+				return ctx.badRequest('El banco seleccionado no existe.');
+			}
+
+			updateData.banco = bancoDocumentId ? { set: [bancoDocumentId] } : null;
+		}
+
+		if (Object.prototype.hasOwnProperty.call(payload, 'tipo_cuenta')) {
+			const tipoCuentaDocumentId = await resolveRelationDocumentId('api::tipo-cuenta.tipo-cuenta', payload.tipo_cuenta);
+
+			if (payload.tipo_cuenta && !tipoCuentaDocumentId) {
+				return ctx.badRequest('El tipo de cuenta seleccionado no existe.');
+			}
+
+			updateData.tipo_cuenta = tipoCuentaDocumentId ? { set: [tipoCuentaDocumentId] } : null;
+		}
+
+		if (Object.keys(updateData).length === 0) {
+			return ctx.badRequest('No se enviaron datos para actualizar.');
+		}
+
+		const updatedSolicitud = await strapi.documents('api::solicitud.solicitud').update({
+			documentId: solicitudDocumentId,
+			data: updateData,
+		});
+
+		ctx.send({ data: updatedSolicitud });
 	},
 }));

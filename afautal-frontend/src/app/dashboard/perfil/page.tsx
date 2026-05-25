@@ -5,11 +5,23 @@ import { useAuth } from "@/contexts/AuthContext";
 import { User, Mail, Calendar, MapPin, Shield, Building, Briefcase, CreditCard, Save, Users, Plus, Trash2, XCircle, Phone } from "lucide-react";
 import { getAuthStorageKey } from "@/lib/auth";
 import { fetchBancos, type Banco } from "@/lib/banco";
+import { fetchTiposCuenta, type TipoCuenta } from "@/lib/tipo-cuenta";
 import { fetchMisCargas, addCarga, deleteCarga, type CargaFamiliar } from "@/lib/carga";
 import { formatRUT, formatPhone } from "@/lib/utils";
 
-const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta RUT", "Cuenta de Ahorro"];
 const PARENTESCOS = ["Cónyuge", "Conviviente Civil", "Padre/Madre" ,"Hijo/a"];
+
+function getRelationLabel(value: string | { nombre?: string } | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.nombre || "";
+}
 
 export default function PerfilPage() {
   const { user, token, refreshUser, loading } = useAuth();
@@ -18,6 +30,7 @@ export default function PerfilPage() {
   const [tipoCuenta, setTipoCuenta] = useState("");
   const [saving, setSaving] = useState(false);
   const [bancosList, setBancosList] = useState<Banco[]>([]);
+  const [tiposCuentaList, setTiposCuentaList] = useState<TipoCuenta[]>([]);
 
   const [cargas, setCargas] = useState<CargaFamiliar[]>([]);
   const [isAddingCarga, setIsAddingCarga] = useState(false);
@@ -27,14 +40,15 @@ export default function PerfilPage() {
   useEffect(() => {
     if (token) {
       fetchBancos(token).then(setBancosList).catch(console.error);
+      fetchTiposCuenta(token).then(setTiposCuentaList).catch(console.error);
       fetchMisCargas(token).then(setCargas).catch(console.error);
     }
   }, [token]);
 
   useEffect(() => {
     if (user?.solicitud) {
-      setBanco(user.solicitud.banco || "");
-      setTipoCuenta(user.solicitud.tipo_cuenta || "");
+      setBanco(getRelationLabel(user.solicitud.banco));
+      setTipoCuenta(getRelationLabel(user.solicitud.tipo_cuenta));
     }
   }, [user]);
 
@@ -287,7 +301,7 @@ export default function PerfilPage() {
                     <label className="block text-xs font-black text-slate-500 uppercase mb-1">Tipo de Cuenta</label>
                     <select value={tipoCuenta} onChange={(e) => setTipoCuenta(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold text-gray-900 bg-white outline-none focus:ring-2 focus:ring-[#BF0F0F]">
                       <option value="">Seleccionar Tipo</option>
-                      {TIPOS_CUENTA.map(t => <option key={t} value={t}>{t}</option>)}
+                      {tiposCuentaList.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
                     </select>
                   </div>
                   <div className="flex gap-2 pt-2">
@@ -303,8 +317,8 @@ export default function PerfilPage() {
                 </div>
               ) : (
                 <>
-                  <InfoItem icon={<Building className="text-slate-400" />} label="Mi Banco" value={solicitud.banco || "No definido"} />
-                  <InfoItem icon={<CreditCard className="text-slate-400" />} label="Tipo de Cuenta" value={solicitud.tipo_cuenta || "No definida"} />
+                  <InfoItem icon={<Building className="text-slate-400" />} label="Mi Banco" value={getRelationLabel(solicitud.banco) || "No definido"} />
+                  <InfoItem icon={<CreditCard className="text-slate-400" />} label="Tipo de Cuenta" value={getRelationLabel(solicitud.tipo_cuenta) || "No definida"} />
                   <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-100">
                     <p className="text-xs font-bold text-red-800 leading-relaxed">
                       Estos datos se usarán para facilitar tus transferencias en la compra de vales de gas.

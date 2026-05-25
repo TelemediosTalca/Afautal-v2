@@ -75,7 +75,7 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
       // para que incluya toda la info de la solicitud en la respuesta
       populate: {
         solicitud: {
-          populate: ['region', 'comuna', 'ciudad']
+          populate: ['region', 'comuna', 'ciudad', 'banco', 'tipo_cuenta']
         },
         role: true,
       },
