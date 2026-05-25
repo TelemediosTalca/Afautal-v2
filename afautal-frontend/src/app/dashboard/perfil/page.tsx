@@ -11,7 +11,7 @@ import { formatRUT, formatPhone } from "@/lib/utils";
 
 const PARENTESCOS = ["Cónyuge", "Conviviente Civil", "Padre/Madre" ,"Hijo/a"];
 
-function getRelationLabel(value: string | { nombre?: string } | undefined): string {
+function getRelationLabel(value: string | { nombre?: string; documentId?: string } | undefined): string {
   if (!value) {
     return "";
   }
@@ -21,6 +21,18 @@ function getRelationLabel(value: string | { nombre?: string } | undefined): stri
   }
 
   return value.nombre || "";
+}
+
+function getRelationValue(value: string | { nombre?: string; documentId?: string } | undefined): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.documentId || value.nombre || "";
 }
 
 export default function PerfilPage() {
@@ -47,8 +59,8 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (user?.solicitud) {
-      setBanco(getRelationLabel(user.solicitud.banco));
-      setTipoCuenta(getRelationLabel(user.solicitud.tipo_cuenta));
+      setBanco(getRelationValue(user.solicitud.banco));
+      setTipoCuenta(getRelationValue(user.solicitud.tipo_cuenta));
     }
   }, [user]);
 
@@ -294,14 +306,14 @@ export default function PerfilPage() {
                     <label className="block text-xs font-black text-slate-500 uppercase mb-1">Banco</label>
                     <select value={banco} onChange={(e) => setBanco(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold text-gray-900 bg-white outline-none focus:ring-2 focus:ring-[#BF0F0F]">
                       <option value="">Seleccionar Banco</option>
-                      {bancosList.map(b => <option key={b.id} value={b.nombre}>{b.nombre}</option>)}
+                      {bancosList.map(b => <option key={b.id} value={b.documentId || b.nombre}>{b.nombre}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-black text-slate-500 uppercase mb-1">Tipo de Cuenta</label>
                     <select value={tipoCuenta} onChange={(e) => setTipoCuenta(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold text-gray-900 bg-white outline-none focus:ring-2 focus:ring-[#BF0F0F]">
                       <option value="">Seleccionar Tipo</option>
-                      {tiposCuentaList.map(t => <option key={t.id} value={t.nombre}>{t.nombre}</option>)}
+                      {tiposCuentaList.map(t => <option key={t.id} value={t.documentId || t.nombre}>{t.nombre}</option>)}
                     </select>
                   </div>
                   <div className="flex gap-2 pt-2">

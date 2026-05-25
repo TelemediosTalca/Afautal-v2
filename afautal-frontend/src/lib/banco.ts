@@ -2,6 +2,7 @@ const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://localhost:1337"
 
 export interface Banco {
   id: number;
+  documentId?: string;
   nombre: string;
   url: string;
 }

@@ -79,6 +79,36 @@ const resolveAuthUserId = async (ctx: any, strapi: any): Promise<number | null> 
 	}
 };
 
+const resolveRelationDocumentId = async (
+	strapi: any,
+	uid: string,
+	value?: string
+): Promise<string | null> => {
+	const normalizedValue = value?.trim();
+
+	if (!normalizedValue) {
+		return null;
+	}
+
+	const byDocumentId = await strapi.db.query(uid).findOne({
+		where: { documentId: normalizedValue },
+	});
+
+	if (byDocumentId?.documentId) {
+		return byDocumentId.documentId as string;
+	}
+
+	const byNombre = await strapi.db.query(uid).findOne({
+		where: { nombre: normalizedValue },
+	});
+
+	if (byNombre?.documentId) {
+		return byNombre.documentId as string;
+	}
+
+	return null;
+};
+
 export default factories.createCoreController('api::solicitud.solicitud', ({ strapi }) => ({
 	async registerFromSolicitud(ctx) {
 		const payload = (ctx.request.body ?? {}) as SolicitudRegistroPayload;
@@ -117,6 +147,20 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
 			return ctx.throw(409, 'Ya existe una solicitud de registro pendiente para este usuario.');
 		}
 
+		const bancoDocumentId = await resolveRelationDocumentId(strapi, 'api::banco.banco', payload.banco);
+		if (payload.banco && !bancoDocumentId) {
+			return ctx.badRequest('El banco seleccionado no existe.');
+		}
+
+		const tipoCuentaDocumentId = await resolveRelationDocumentId(
+			strapi,
+			'api::tipo-cuenta.tipo-cuenta',
+			payload.tipo_cuenta
+		);
+		if (payload.tipo_cuenta && !tipoCuentaDocumentId) {
+			return ctx.badRequest('El tipo de cuenta seleccionado no existe.');
+		}
+
 		const solicitudData: SolicitudWriteData = {
 			rut,
 			nombre_completo: nombreCompleto,
@@ -131,8 +175,8 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
 			ciudad: payload.ciudad ? { set: [payload.ciudad] } : null,
 			direccion_particular: payload.direccion_particular?.trim() || null,
 			telefono: payload.telefono?.trim() || null,
-			banco: payload.banco ? { set: [payload.banco] } : null,
-			tipo_cuenta: payload.tipo_cuenta ? { set: [payload.tipo_cuenta] } : null,
+			banco: bancoDocumentId ? { set: [bancoDocumentId] } : null,
+			tipo_cuenta: tipoCuentaDocumentId ? { set: [tipoCuentaDocumentId] } : null,
 			estado: 'pendiente',
 			es_nuevo_externo: payload.es_nuevo_externo ?? false,
 		};
@@ -190,40 +234,10 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
 			return ctx.badRequest('No se pudo resolver la solicitud a actualizar.');
 		}
 
-		const resolveRelationDocumentId = async (uid: string, value?: string): Promise<string | null> => {
-			const normalizedValue = value?.trim();
-
-			if (!normalizedValue) {
-				return null;
-			}
-
-			const byDocumentId = await strapi.db.query(uid).findOne({
-				where: { documentId: normalizedValue },
-			});
-
-			if (byDocumentId?.documentId) {
-				return byDocumentId.documentId as string;
-			}
-
-			const byNombre = await strapi.db.query(uid).findOne({
-				where: { nombre: normalizedValue },
-			});
-
-			if (byNombre?.documentId) {
-				return byNombre.documentId as string;
-			}
-
-			if (byNombre?.id) {
-				return String(byNombre.id);
-			}
-
-			return null;
-		};
-
 		const updateData: Record<string, unknown> = {};
 
 		if (Object.prototype.hasOwnProperty.call(payload, 'banco')) {
-			const bancoDocumentId = await resolveRelationDocumentId('api::banco.banco', payload.banco);
+			const bancoDocumentId = await resolveRelationDocumentId(strapi, 'api::banco.banco', payload.banco);
 
 			if (payload.banco && !bancoDocumentId) {
 				return ctx.badRequest('El banco seleccionado no existe.');
@@ -233,7 +247,11 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
 		}
 
 		if (Object.prototype.hasOwnProperty.call(payload, 'tipo_cuenta')) {
-			const tipoCuentaDocumentId = await resolveRelationDocumentId('api::tipo-cuenta.tipo-cuenta', payload.tipo_cuenta);
+			const tipoCuentaDocumentId = await resolveRelationDocumentId(
+				strapi,
+				'api::tipo-cuenta.tipo-cuenta',
+				payload.tipo_cuenta
+			);
 
 			if (payload.tipo_cuenta && !tipoCuentaDocumentId) {
 				return ctx.badRequest('El tipo de cuenta seleccionado no existe.');
