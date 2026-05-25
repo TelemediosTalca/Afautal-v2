@@ -20,7 +20,7 @@ function getRelationLabel(value: string | { nombre?: string; documentId?: string
     return value;
   }
 
-  return value.nombre || "";
+  return value.nombre || value.documentId || "";
 }
 
 function getRelationValue(value: string | { nombre?: string; documentId?: string } | undefined): string {

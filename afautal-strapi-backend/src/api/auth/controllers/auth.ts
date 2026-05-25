@@ -40,6 +40,18 @@ const resolveAuthUserId = async (ctx: any, strapi: any): Promise<number | null> 
   }
 };
 
+const toRelationLabel = (value: any): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  return value.nombre || value.title || value.name || value.documentId || undefined;
+};
+
 export default factories.createCoreController('api::solicitud.solicitud', ({ strapi }) => ({
   async registroOptions(ctx) {
     const solicitudContentType = strapi.contentType('api::solicitud.solicitud') as any;
@@ -80,6 +92,14 @@ export default factories.createCoreController('api::solicitud.solicitud', ({ str
         role: true,
       },
     });
+
+    if (user?.solicitud) {
+      user.solicitud = {
+        ...user.solicitud,
+        banco: toRelationLabel(user.solicitud.banco),
+        tipo_cuenta: toRelationLabel(user.solicitud.tipo_cuenta),
+      };
+    }
 
     if (!user) {
       return ctx.notFound('Usuario no encontrado.');
